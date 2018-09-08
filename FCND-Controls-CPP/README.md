@@ -1,3 +1,35 @@
+# Project 3 - Building a Controller - Writeup
+
+### 1. Implement Body Rate Control
+
+The body rate control function itself was fairly straightforward to implement.  Created a vector for the moments of intertia, then multiplied this with the the gain paramters for PQR and the pqr error.  After getting this, roll/pitch, and generat motor commands working, the drone didn't behave like in the GIF.  Instead of flying up it flew down, but the scenario 2 tests still passed.
+
+![Down not up](./fly-down.png)
+
+### 2. Implement Roll Pitch Control
+
+Referenced the python solution and only calculated the p and q command if the commanded thrust was greater than zero.  Pulled out the required parts of the rotation matrix.  Calculated the target roll and pitch in the global frame then made sure this was in the requisite tilt limits.  Used the rotation matrix components to convert the global roll and pitch to P and Q in the body frame.
+
+### 3. Implement Altitude Control
+
+Made sure the commanded z velocity was with the specified limit both positive and negative.  Then calculated the error for the z position and z velocity.  Multipled these by their respective gain parameters and added the feed forward acceleration to calculate u bar.  Multiplied u_bar by gravity and divided by R[3, 3] to calculate the thrust as in the exercise.  Later, in Scenario 4, implemented the I (Integration) part of the PID controller.
+
+### 4. Implement Lateral Position Control
+
+Made sure the velocity component was within the specified limits.  Then calculated the error for position and velocity for x, y, z using the V3F vectors.  Created vectors for the gains, and multiplied these with their respective errors, and added the feed forward acceleartion to calculate the commanded acceleration.  Finally, made sure the commaned acceleration was within the specified max acceleration limit.
+
+### 5. Implement Yaw Control
+
+Calculate the commanded yaw rate by calculate the yaw error and multiplying by the yaw gain parameter.  There was an instruction about using `fmodf(foo,b)` to unwrap the radian float to a range, but wasn't sure how to do this and it didn't seem to affect passing all of the scenarios.
+
+### 6. Implement Motor Commands
+
+The GenerateMotorCommands was the one of the most challenging parts of the exercise since this was substantially different from the lessons.  Finally realized I need to solve the linear equations for collective thrust and moment commands.  Screwed up my signs between the x and z components which took me a couple hours to solve.  Finally did so by checking the omega for x and z in the simulator and realizing these were no longer 0 which didn't make sense. Also needed to reference help comments about using kappa for the z component.  After solving these issues, also had to comment out the min and max thrust limitations to get simulation 2 to pass.
+
+
+
+# ORIGINAL PROJECT README
+
 # The C++ Project Readme #
 
 This is the readme for the C++ project.
