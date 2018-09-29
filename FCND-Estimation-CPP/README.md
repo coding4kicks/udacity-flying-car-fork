@@ -1,3 +1,67 @@
+# Estimation Project Writeup #
+
+### Step 1: Sensor Noise ###
+
+Thought about creating a python script or using AWK but then just opened the file in visual studio, copied the data to google sheets, split text to data, and used the standard deviation tool.  Tried to stop the sim at the end so I could get the most data.  Had 70 data points for GPS and 1300+ for accelerometers.  Results were 0.70119881 for GPS and 0.5117813719 for accelerometers.  The graphs turned green, though the GPS one bounced back and forth which I imagine is due to fewer data points.
+
+![Sensor Noise](./step-1.png)
+
+
+### Step 2: Attitude Estimation ###
+
+Wasn’t sure wether to use the rotation matrix or quaternion approach.  Decided to go with the later.  Had to study up on wikipedia to remember what a quaternion is and also examined the code file to see what functionality was available.  With the comment about integrating the rotation matrix and integrating the quaternion I got confused and was initially trying to integrate the quaternion which was producing incorrect results.  Tried various approaches and wasn’t really understanding the problem.  Realized that I need to create two quaternions (`q_t` and `dt`) and multiply them as in the linked paper, but was still getting bad results.  Went back to basics and made sure I could convert the estimated pitch and yaw to a quaternion and back and get the same results.  Learned that I was mixing up pitch and roll variables when accessing the final results.  Was still getting errors.  Then realized the dt quaternion wasn’t supposed to be just `gyro.x, y, z` but `dtIMU * gyro.x, y, z` since this is the delta.  This then produced the correct results.
+
+![Attitude Estimation](./step-2.png)
+
+
+### Step 3: Prediction Step ###
+
+Introduced my own bug for awhile by setting the `yaw`, `predictedState(6)`, to `currentState(0)` instead of `currentState(6)`.  Threw everything off and sent me down rabbit holes.  Switch to focus on individual fields: x velocity update, y velocity update, then `x` and `y` position, then `z`, and finally `yaw`, making sure that everything behaved as expected.  Which then exposed the bug with yaw.  Not sure if I was off with a sign somewhere in regards to the `z` position since the drift is upward which is different from the picture in the README of step 3.
+
+![Predict](./step-3.png)
+
+Implemented the derivative of the rotation matrix as depicted in figure 52 of the paper.
+
+![RgbPrime](./figure-52.png)
+
+Calculated the ekfCov backwards.  Started with the main formula of `gPrime * ekfCov * gPrime.transpose() + Q;`. Then filled in the various parts of gPrime.  And lastly calculated the `RbgPrime * u_t * dt`.  This last part gave the most difficulty just trying to work with VectorXf but stumbled through it 
+
+Then set the `QPosXYStd` and `QVelXYStd`.  Settled on allowing a little error in `QVelXYStd` so that `QPosXYStd` more reasonably approximated the data.  Whenever I set `QVelXYStd` to account for all the data, `QPosXYStd` became to big.  Settled on `QPosXYStd = .01` and `QVelXYStd = .1`
+
+![std dev](./step-3b.png)
+
+
+### Step 4 - Magnetometer Update ###
+
+Updating `QYawStd` from 0.5 to 0.1 went from 100% of the yaw error to 75% of the yaw error and turned the box green.
+
+![yaw error](./step-4.png)
+
+The most challenging part of implementing `UpdateFromMag()` was the normalization.  The equations seemed too easy so when I implemented hPrime and zFromX and it was still wrong, I ran down the path of “I must have done something wrong”.  Then I tried to blindly normalize the `z(0)` and `zFromX(0)` and not the difference.  Finally by printing out `z(0)` and `zFromX(0)`, I was able to correctly normalize the terms.  The I had to adjust `QYawStd` up to 0.7 and the boxes turned green.
+
+![yaw error better](./step-4b.png)
+
+### Step 5 - Closed Loop + GPS Update ###
+
+Doubled `QPosZStd` to .1.  Was trying to figure out how to easily create an identity matrix in one line and add to hPrime, but reverted to adding values individually.  Did the same with zFromX after getting an assertion error when trying to pass in ekfState directly to update.  Then called update just like in MagUpdate.  Trying to then adjust the GPS update parameters didn’t seem to improve the performance.
+
+![gps y and z error](./step-5.png)
+
+### Step 6 - Adding Your Controller ###
+
+Added my controller and ran scenario 11, the quad had issues.  So added back ideal IMU, the quad seemed fine until the second turn, then its attitude began to oscillate and it shot of the screen.  Tried adjusting position and velocity but not the issue.  Tried yaw which seemed to fix things (just a bit of an overshoot) when I dropped the gain to 1.5 which turned the box green again.
+
+![perfect imu](./step-6.png)
+
+Then turned off the ideal IMU.  Quad was more wobbly but still flew the general path.  Position error peack at 0.5, below the 1m criteria for success and the box turned green.  Wondering why the quad is more wobbly and how to fix that?  Ran through scenarios 1-5 to check out gains and all passed green.
+
+![imperfect imu](./step-6b.png)
+
+printf has become my friend through out this course to better understand the data. 
+
+
+# ------ Orginal Product Readme ------ #
+
 # Estimation Project #
 
 Welcome to the estimation project.  In this project, you will be developing the estimation portion of the controller used in the CPP simulator.  By the end of the project, your simulated quad will be flying with your estimator and your custom controller (from the previous project)!
