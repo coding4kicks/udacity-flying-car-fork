@@ -57,10 +57,10 @@ Then turned off the ideal IMU.  Quad was more wobbly but still flew the general 
 
 ![imperfect imu](./step-6b.png)
 
-printf has become my friend through out this course to better understand the data. 
+`printf` has become my friend through out this course to better understand the data. 
 
 
-# ------ Orginal Product Readme ------ #
+# ------ Orginal Readme ------ #
 
 # Estimation Project #
 
